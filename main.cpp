@@ -34,8 +34,8 @@
 #include "messages.h"
 
 /* ********  Global variable declarations  ***************/
-QTimeZone LocalTimeZone(QTimeZone::systemTimeZoneId());
-QTimeZone LocalStandardTimeZone(LocalTimeZone.standardTimeOffset(QDateTime::currentDateTime()));
+QTimeZone LocalTimeZone = QTimeZone(QTimeZone::systemTimeZoneId());
+QTimeZone LocalStandardTimeZone = QTimeZone(LocalTimeZone.standardTimeOffset(QDateTime::currentDateTime()));
 
 
 /* ********  Global function declarations  ***************/
@@ -55,7 +55,7 @@ uint16_t computeEkmCrc(const uint8_t *dat, uint16_t len);
 /* **********  Global function definitions   *************/
 
 /*!
- * \brief InitializeMeters -- Do once per execution actions.
+ * \brief InitializeMeters -- Once per program execution actions.
  *
  * Opens a connection to the database.
  *
@@ -84,7 +84,8 @@ bool InitializeMeters(QSerialPort *serialPort, const QStringList &args)
     /*! Do meter initialization tasks for each meter.  */
     foreach (QString meterId, args)
     {
-        QString fullMeterId = meterId.rightJustified(sizeof(RequestMsgV4.meterId), '0', true); //!< Meter id expanded to all full size.
+        //! Expand meter id to all 12 characters.
+        QString fullMeterId = meterId.rightJustified(sizeof(RequestMsgV4.meterId), '0', true);
 
         //!  Set the time in the meter to the computer's idea of the local standard time.
         if (!SetMeterTime(serialPort, fullMeterId))
