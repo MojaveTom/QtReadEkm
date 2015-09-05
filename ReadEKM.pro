@@ -48,6 +48,7 @@ DISTFILES += \
     Notes.txt \
     RefreshReadEKM.sh \
     README.md \
-    LICENSE.txt
+    LICENSE.txt \
+    Doxyfile
 
 DEFINES += QT_MESSAGELOGCONTEXT
