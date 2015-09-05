@@ -1,0 +1,6 @@
+# Files that git should ignore
+.DS_Store
+ArchiveTag.txt
+ReadEKM
+      # with no extension, this is the executable.
+*.pro.user
