@@ -1,4 +1,21 @@
-Sample command lines:
+#
+#    Notes.txt -- Notes about this project that are useful to have around.
+#    Copyright (C) 2015  Thomas A. DeMay
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 3 of the License, or
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License along
+#    with this program; if not, write to the Free Software Foundation, Inc.,
+#    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
 
 Meter id numbers:
     House electrical and water:  300002570
@@ -36,44 +53,48 @@ Year	Date & Time             Abbreviation	Time Change             Offset After
 
 SQL select statement to extract interesting things from the saved data.
 
-SELECT ComputerTime, MeterTime, ROUND(MID(MeterData, 17, 8)*0.01, 3) AS HouseKwh, ROUND((MID(MeterData, 204, 8) +  MID(MeterData, 212, 8)) * .001, 3) AS WaterSysKwh, ROUND(MID(MeterData, 220, 8) * 0.1, 1) AS CuFtWater FROM RawMeterData WHERE DataType = 'V4A';
+SELECT ComputerTime
+    , MeterTime
+    , ROUND(MID(MeterData, 17, 8)*0.01, 3) AS HouseKwh
+    , ROUND((MID(MeterData, 204, 8) +  MID(MeterData, 212, 8)) * .001, 3) AS WaterSysKwh
+    , ROUND(MID(MeterData, 220, 8) * 0.1, 1) AS CuFtWater
+    FROM RawMeterData
+    WHERE DataType = 'V4A';
+
+This view extracts parameters that I'm interested in for my configuration of meters.
+There is going to be an incredible glitch when a count overflows.
+Note that the meter serial number and data type are embedded in the table name.
 
 CREATE OR REPLACE VIEW MeterData AS
 SELECT rmd.ComputerTime AS Time
 , ROUND(MID(rmd.MeterData, 220, 8) * 0.1, 1) AS CuFtWater
+
 , ROUND((MID(rmd.MeterData, 220, 8)
 - MID(rmd1.MeterData, 220, 8)) / ((UNIX_TIMESTAMP(rmd.ComputerTime) + MICROSECOND(rmd.ComputerTime)/1000000.0)
 - (UNIX_TIMESTAMP(rmd1.ComputerTime) + MICROSECOND(rmd1.ComputerTime)/1000000.0))  * 0.74805194703778 * 60, 3) AS GPM
+
 , ROUND(MID(rmd.MeterData, 17, 8) / POWER(10, MID(rmd.MeterData, 231, 1)), 2) AS HouseEnergyKWH
+
 , MID(rmd.MeterData, 153, 7) + 0.0 AS HousePowerW
-, ROUND(((MID(rmd.MeterData, 17, 8) - MID(rmd1.MeterData, 17, 8)) * 1000.0 / POWER(10, MID(rmd.MeterData, 231, 1)))  /* Energy in period in wattHours */
-/ (((UNIX_TIMESTAMP(rmd.ComputerTime) + MICROSECOND(rmd.ComputerTime)/1000000.0)         /* Time period duration */
+
+, ROUND(
+ ((MID(rmd.MeterData, 17, 8) - MID(rmd1.MeterData, 17, 8)) * 1000.0 / POWER(10, MID(rmd.MeterData, 231, 1)))  /* Energy in period in wattHours */
+/  /*---------------------------------------------------divided by---------------------------------*/
+(((UNIX_TIMESTAMP(rmd.ComputerTime) + MICROSECOND(rmd.ComputerTime)/1000000.0)         /* Time period duration */
 - (UNIX_TIMESTAMP(rmd1.ComputerTime) + MICROSECOND(rmd1.ComputerTime)/1000000.0)) / 3600.0)      /* in Hours */
-    , 0)
- AS AvgPowerW                   /* in watts */
+ , 0) AS AvgPowerW                   /* rounded to zero decimal places, in watts */
+
 , ROUND((MID(rmd.MeterData, 204, 8) +  MID(rmd.MeterData, 212, 8)) * .001, 3) AS WaterSysKwh
 , ROUND(((MID(rmd.MeterData, 204, 8) +  MID(rmd.MeterData, 212, 8)) - (MID(rmd1.MeterData, 204, 8) +  MID(rmd1.MeterData, 212, 8)) )  /* Energy in period in wattHours */
-/ (((UNIX_TIMESTAMP(rmd.ComputerTime) + MICROSECOND(rmd.ComputerTime)/1000000.0)         /* Time period duration */
+/ /*---------------------------------------------------divided by---------------------------------*/
+(((UNIX_TIMESTAMP(rmd.ComputerTime) + MICROSECOND(rmd.ComputerTime)/1000000.0)         /* Time period duration */
 - (UNIX_TIMESTAMP(rmd1.ComputerTime) + MICROSECOND(rmd1.ComputerTime)/1000000.0)) / 3600.0)      /* in Hours */
-    , 0)
- AS AvgWaterPowerW                   /* in watts */
+    , 0) AS AvgWaterPowerW                   /* Average power used by water system in watts. */
+
   FROM 000300002570_A_RawMeterData as rmd
      INNER JOIN 000300002570_A_RawMeterData AS rmd1 ON
-         rmd1.idRawMeterData = rmd.idRawMeterData -1
+         rmd1.idRawMeterData = rmd.idRawMeterData -1        /* Join this record with previous as defined by id number. */
 ;
-
-
-
-
-CREATE OR REPLACE VIEW hkw AS SELECT ComputerTime
-, MeterTime
-, ROUND(MID(MeterData, 17, 8)*0.01, 3) AS HouseKwh
-, ROUND((MID(MeterData, 204, 8) +  MID(MeterData, 212, 8)) * .001, 3) AS WaterSysKwh
-, ROUND(MID(MeterData, 220, 8) * 0.1, 1) AS CuFtWater
-, ROUND(MID(MeterData, 153, 7), 0) AS HouseWatts
-  FROM RawMeterData WHERE DataType = 'V4A';
-
-
 
 
 Time set sequence from EKM Dash program

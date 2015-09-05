@@ -1,7 +1,32 @@
 #!/bin/bash
-##  Shell script to kill and restart ReadEKM program every day at 0705.
+#
+#
+#    GetArchiveTag.sh -- Shell script to kill and restart ReadEKM program every day at 0705.
+#    Copyright (C) 2015  Thomas A. DeMay
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 3 of the License, or
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License along
+#    with this program; if not, write to the Free Software Foundation, Inc.,
+#    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+# *
+# */
+#
+#  This script creates a special file in the user's home directory that the
+# program looks for.  When found, the program quits gracefully.
+#
+#    Script is run in the source directory.
+#
 
-declare -i waitCount=20
+declare -i waitCount=20     #  Will cause us to give up clean quit after 200 seconds.
 # Get pid of ReadEKM process -- look for "ReadEKM" surrounded by word breaks.
 #         Not just "ReadEKM" because that could be in some other process.
 # wpid is NOT empty if the ReadEKM application is running, and the status is true.
@@ -31,7 +56,7 @@ fi
 sleep $(( 61 - ( $(date -j +%s) % 60 ) ))
 
 # restart ReadEKM program
-####   MAKE SURE THERE IS A LINK TO THE CURRENT EXECUTIBLE
+####   MAKE SURE THERE IS A LINK TO THE CURRENT EXECUTABLE
 #### WHERE THIS SCRIPT EXPECTS IT TO BE.
 $PWD/ReadEKM 300002570 &
 

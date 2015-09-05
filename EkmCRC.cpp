@@ -1,7 +1,29 @@
+/*!
+@file
+@brief Compute crc on EKM message.
+@author Thomas A. DeMay
+@date 2015
+@par    Copyright (C) 2015  Thomas A. DeMay
+@par
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    any later version.
+@par
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+@par
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+*/
+
 #include <QtDebug>
 #include "inttypes.h"
 
-static const uint16_t ekmCrcLut[256] = {
+static const uint16_t crcLUTforEkmMeters[256] = {
     0x0000, 0xc0c1, 0xc181, 0x0140, 0xc301, 0x03c0, 0x0280, 0xc241,
     0xc601, 0x06c0, 0x0780, 0xc741, 0x0500, 0xc5c1, 0xc481, 0x0440,
     0xcc01, 0x0cc0, 0x0d80, 0xcd41, 0x0f00, 0xcfc1, 0xce81, 0x0e40,
@@ -36,14 +58,16 @@ static const uint16_t ekmCrcLut[256] = {
     0x8201, 0x42c0, 0x4380, 0x8341, 0x4100, 0x81c1, 0x8081, 0x4040
 };
 
-uint16_t ekmCheckCrc(const uint8_t *dat, uint16_t len)
+uint16_t computeEkmCrc(const uint8_t *dat, uint16_t len)
 {
     qDebug("Begin");
     qDebug("Computing CRC on data starting at %p for %d bytes.", dat, len);
     uint16_t crc = 0xffff;
 
-    while (len--) {
-        crc = (crc >> 8) ^ ekmCrcLut[(crc ^ *dat++) & 0xff];
+    while (len--)
+    {
+        crc = (crc >> 8) ^ crcLUTforEkmMeters[(crc ^ *dat) & 0xff];
+        dat++;
     }
 
     crc = (crc << 8) | (crc >> 8);  // swap the bytes
