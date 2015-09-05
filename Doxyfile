@@ -110,7 +110,8 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # Configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = /Volumes/UsersData/tom/Projects/QtProjects/ReadEKM
+INPUT                  = /Volumes/UsersData/tom/Projects/QtProjects/ReadEKM \
+                         /Volumes/UsersData/tom/Projects/QtProjects/SupportRoutines
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.c \
                          *.cc \
