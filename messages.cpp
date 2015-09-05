@@ -1,6 +1,9 @@
 /*!
 @file
 @brief Source to initialize message globals.
+
+Messages and parts of messages with known content are defined here.
+
 @author Thomas A. DeMay
 @date 2015
 @par    Copyright (C) 2015  Thomas A. DeMay

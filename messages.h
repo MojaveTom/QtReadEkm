@@ -1,6 +1,12 @@
 /*!
 @file
 @brief Header file describing EKM Omnimeter messages.
+
+Structures are defined to access fields of messages.
+Where messages have common parts, they are put into a super class from
+which individual messages inherit.  To allow functions that process
+multiple kinds of related messages, the messages are grouped into a union.
+
 @author Thomas A. DeMay
 @date 2015
 @par    Copyright (C) 2015  Thomas A. DeMay
@@ -200,6 +206,13 @@ typedef union responseV4union
     ResponseV4BData  responseV4Bdata;
 } ResponseV4Generic;
 
+/*!
+  \brief ASSERT_CONCAT_, ASSERT_CONCAT, STATIC_ASSERT
+
+  Macros together implement an ASSERT that will cause compiler error
+  if the conditions are not met.  This allows catching some errors
+  at compile time instead of run time.
+  */
 #define ASSERT_CONCAT_(a, b) a##b
 #define ASSERT_CONCAT(a, b) ASSERT_CONCAT_(a, b)
 /* These can't be used after statements in c89. */

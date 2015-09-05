@@ -34,8 +34,8 @@
 #include "messages.h"
 
 /* ********  Global variable declarations  ***************/
-QTimeZone LocalTimeZone = QTimeZone(QTimeZone::systemTimeZoneId());
-QTimeZone LocalStandardTimeZone = QTimeZone(LocalTimeZone.standardTimeOffset(QDateTime::currentDateTime()));
+QTimeZone LocalTimeZone = QTimeZone(QTimeZone::systemTimeZoneId()); //!< The local timezone, either Standard time or Daylight time.
+QTimeZone LocalStandardTimeZone = QTimeZone(LocalTimeZone.standardTimeOffset(QDateTime::currentDateTime())); //!< Timezone for Local Standard time.
 
 
 /* ********  Global function declarations  ***************/
