@@ -160,12 +160,11 @@ Send end message
 SOH B 0 ETX u
 01 42 30 03 75
 
-/*************************************************************/
+/***************************************************************/
 At idRawMeterData = 2784 I finally got the meter set to local standard time.
 idRawMeterData = 2783 is last record with MeterTime at local time (PDT).
 Records AFTER 2783 have date-time in the MeterData matching the time in the MeterTime column.
 Records BEFORE AND INCLUDING 2783 have date-time in MeterData one hour later than MeterTime column.
-
 
 /***************************************************************/
 This SQL sums the north and south solar arrays for today only.
