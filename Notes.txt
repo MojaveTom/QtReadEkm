@@ -17,10 +17,26 @@
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 
+/*! Custom Process Steps: */
++----------+------------------------------------------------------------+--------------+
+| Command  | Arguments                                                  | Working Dir  |
++==========+============================================================+==============+
+| bash     | GetArchiveTag.sh                                           | %{sourceDir} |
++----------+------------------------------------------------------------+--------------+
+| bash     | %{sourceDir}/DoLink.sh %{CurrentProject:Name} %{sourceDir} | %{buildDir}  |
++----------+------------------------------------------------------------+--------------+
+| doxygen  |  >DoxygenLog.txt                                           | %{sourceDir} |
++----------+------------------------------------------------------------+--------------+
+
+GetArchiveTag.sh is a shell script to get the Git archive tag and put it into ArchiveTag.txt
+DoLink.sh is a shell script to put a link to the executable in the source directory.
+The doxygen step puts the stdout data into a file for later perusal.  Doxyfile is in source dir.
+
+
 Meter id numbers:
     House electrical and water:  300002570
 
-# Shell script to create SQL to set the timezone to local standard time for the location
+# Shell script to create SQL to set the timezone to local STANDARD time for the location
 # of the machine running the script.
 
 # get the timezone offset for jan 1 at midnight -- will always be local standard time.
@@ -36,6 +52,7 @@ if [ "${stzHour#-}" = "${stzHour}" ] && [ "${stzHour#+}" = "${stzHour}" ]; then 
 setTimeZone="SET time_zone='${stzHour}:${stzMin}';"
 
 
+Information about changing to and from Daylight Savings Time in the UnitedStates/Pacific timezone.
 
 Year	Date & Time             Abbreviation	Time Change             Offset After
 2014	Sun, Mar 9, 2:00 AM	PST → PDT	+1 hour (DST start)	UTC-7h
@@ -51,7 +68,7 @@ Year	Date & Time             Abbreviation	Time Change             Offset After
 * All times are local Los Angeles time.
 
 
-SQL select statement to extract interesting things from the saved data.
+SQL select statement to extract interesting things from the saved meter data.
 
 SELECT ComputerTime
     , MeterTime
@@ -97,8 +114,9 @@ SELECT rmd.ComputerTime AS Time
 ;
 
 
-Time set sequence from EKM Dash program
-Send Request v4A  / ? 0 0 0 3 0 0 0 0 2 5 7 0 0 0 ! \r \n
+Example time set sequence from EKM Dash program:
+Send Request v4A
+/  ?  0  0  0  3  0  0  0  0  2  5  7  0  0  0  ! \r \n
 2F 3F 30 30 30 33 30 30 30 30 32 35 37 30 30 30
 21 0D 0A
 
@@ -120,21 +138,26 @@ Receive   response v4A
 33 38 33 30 31 33 32 30 30 31 35 30 39 30 31 30
 33 31 30 30 36 32 32 30 30 21 0D 0A 03 09 13
 
-Send  password SOH P 1 STX ( 0 0 0 0 0 0 0 0 ) ETX CRC1 CRC2
+Send  password
+SOH P 1 STX (  0  0  0  0  0  0  0  0  ) ETX CRC1 CRC2
 01 50 31 02 28 30 30 30 30 30 30 30 30 29 03 32
 44
 
-Receive ACK
+Receive
+ACK
 06
 
 2015-09-01 day 3 (Tue) 10:06:20
-Send Time w/ CRC      SOH W 1 STX 0 0 6 0 ( 1 5 0 9 0 1 0 3 1 0 0 6 2 0 ) ETX CRC1 CRC2
+Send Time w/ CRC
+SOH W 1 STX 0  0  6  0  (  1  5  0  9  0  1  0  3  1  0  0  6  2  0  ) ETX CRC1 CRC2
 01 57 31 02 30 30 36 30 28 31 35 30 39 30 31 30 33 31 30 30 36 32 30 29 03 55 62
 
-Receive  ACK
+Receive
+ACK
 06
 
-Send   end   SOH B 0 ETX u
+Send end message
+SOH B 0 ETX u
 01 42 30 03 75
 
 /*************************************************************/
@@ -145,10 +168,11 @@ Records BEFORE AND INCLUDING 2783 have date-time in MeterData one hour later tha
 
 
 /***************************************************************/
-This SQL sums the north and south solar arrays.
-select se.Time
-,  round((se.LifeWattHour + se1.LifeWattHour) / 1000.0, 3) AS 'Solar KWH'
+This SQL sums the north and south solar arrays for today only.
+{From a table that collects data from solar inverters every 15 min.}
+SELECT se.Time
+,  ROUND((se.LifeWattHour + se1.LifeWattHour) / 1000.0, 3) AS 'Solar KWH'
 , (se.OutWattsNow + se1.OutWattsNow) AS OutWatts
-    from SolarEnergy as se inner join
-        SolarEnergy as se1 ON se.Name like 'south%' and ABS(UNIX_TIMESTAMP(se1.Time) - UNIX_TIMESTAMP(se.Time)) < 450 /* within 7.5 min */
-    where se.Name like 'north%' and se.Time > date(now());
+    FROM SolarEnergy as se INNER JOIN
+        SolarEnergy as se1 ON se.Name LIKE 'south%' AND ABS(UNIX_TIMESTAMP(se1.Time) - UNIX_TIMESTAMP(se.Time)) < 450 /* within 7.5 min */
+    WHERE se.Name LIKE 'north%' AND se.Time > DATE(NOW());
