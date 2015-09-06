@@ -50,9 +50,92 @@ bool ValidateCRC(const uint8_t *msg, int numBytes);
 bool SendControl(QSerialPort *serialPort, QString &meterId, OutputControlDef *ctrlMsg, const int msgSize);
 bool SetMeterTime(QSerialPort *serialPort, QString &meterId);
 bool InitializeMeters(QSerialPort *serialPort, const QStringList &args);
+void VerifyDatabaseTable(QSqlQuery &query, const QString fullMeterId, const QString dataKind);
 uint16_t computeEkmCrc(const uint8_t *dat, uint16_t len);
 
 /* **********  Global function definitions   *************/
+
+/*!
+ * \brief VerifyDatabaseTable -- Create meter data table if it doesn't exist.
+ *
+ * Returns without doing anything if the dataKind is unrecognized.
+ *
+ * Query the INFORMATION_SCHEMA for the existence of the desired table.
+ * If errors accessing INFORMATION_SCHEMA, assume the table exists.
+ * If the INFORMATION_SCHEMA query returns a result, the table exists.
+ * Otherwise, try to create the table.  Assume success, we will fail later
+ * if the table could not be created.
+ *
+ * \param query         QSqlQuery opened on the database.
+ * \param fullMeterId   Meter serial number expanded to 12 characters.
+ * \param dataKind      Kind of table to check.  Must be one of: "_A", "_B" or "".
+ */
+void VerifyDatabaseTable(QSqlQuery &query, const QString fullMeterId, const QString dataKind)
+{
+    /* dataKind must be one of: "_A", "_B" or "". */
+    qDebug("Begin");
+    if ((dataKind != "_A") && (dataKind != "_B") && (dataKind != ""))
+    {
+        qWarning("dataKind argument is not a legal value.  Should be one of \"_A\", \"_B\", or \"\".  Was \"%s\"."
+                 , qUtf8Printable(dataKind));
+       qDebug("Return");
+       return;
+    }
+    if (!query.exec(QString("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '%1%2_RawMeterData'")
+                    .arg(fullMeterId)
+                    .arg(dataKind)))
+    {
+        qCritical("Unable to access INFORMATION_SCHEMA; assume data tables exist.");
+        qInfo("    Query was: %s", qUtf8Printable(query.lastQuery()));
+        qInfo("    Error was: %s", qUtf8Printable(query.lastError().text()));
+    }
+    else
+    {
+        qDebug("Successfully accessed INFORMATION_SCHEMA for query about existence of data table.");
+        if (!query.next())
+        {
+            // the query returned no results => table does not exist.  Create it.
+            QString queryText = QString("CREATE TABLE `%1%2_RawMeterData` ("
+                                        "`idRawMeterData` int(11) NOT NULL AUTO_INCREMENT,"
+                                        "`ComputerTime` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT 'Time that record written to database.',"
+                                        "`MeterTime` datetime DEFAULT NULL COMMENT 'Meter time from response message.',"
+                                        "`MeterId` varchar(12) DEFAULT NULL COMMENT 'Meter ID (Serial number) from response.',"
+                                        "`MeterType` varchar(4) DEFAULT NULL,"
+                                        "`DataType` varchar(4) DEFAULT NULL COMMENT 'Either \"V3\", \"V4A\" or \"V4B\"',"
+                                        "`MeterData` binary(255) NOT NULL COMMENT 'Exact copy of entire response data from meter.',"
+                                        "PRIMARY KEY (`idRawMeterData`),"
+                                        "UNIQUE KEY `idRawMeterData_UNIQUE` (`idRawMeterData`)"
+                                        ") ENGINE=InnoDB AUTO_INCREMENT=8281 DEFAULT CHARSET=utf8")
+                    .arg(fullMeterId)
+                    .arg(dataKind);
+            if (!DontActuallyWriteDatabase)
+            {
+                if (!query.exec(queryText))
+                {
+                    qCritical("Unable to create RawMeterData %s table for %s meter.  Assume table already exists."
+                              , qUtf8Printable(dataKind)
+                              , qUtf8Printable(fullMeterId));
+                    qInfo("    Query was: %s", qUtf8Printable(query.lastQuery()));
+                    qInfo("    Error was: %s", qUtf8Printable(query.lastError().text()));
+                }
+                else
+                {
+                    qInfo("Successfully created Table %s%s_RawMeterData"
+                          , qUtf8Printable(fullMeterId)
+                          , qUtf8Printable(dataKind));
+                }
+            }
+            else
+            {
+                qInfo() << "Didn't actually create database table.  Command was:";
+                qInfo() << queryText;
+            }
+        }
+        qDebug("Table %s%s_RawMeterData exists.", qUtf8Printable(fullMeterId), qUtf8Printable(dataKind));
+    }
+    qDebug("Return");
+    return;
+}
 
 /*!
  * \brief InitializeMeters -- Once per program execution actions.
@@ -87,128 +170,27 @@ bool InitializeMeters(QSerialPort *serialPort, const QStringList &args)
         //! Expand meter id to all 12 characters.
         QString fullMeterId = meterId.rightJustified(sizeof(RequestMsgV4.meterId), '0', true);
 
-        //!  Set the time in the meter to the computer's idea of the local standard time.
-        if (!SetMeterTime(serialPort, fullMeterId))
-        {
-            qWarning("Unable to set meter time for meter %s.", qUtf8Printable(fullMeterId));
-        }
-
         //! Check for the existence of database tables in which to store meter data.
 
         if (fullMeterId.toLongLong() >= 300000000)
         {
             // Is a v.4 meter.
-            // Create the table if it doesn't exist.
-            if (!query.exec(QString("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '%1_A_RawMeterData'").arg(fullMeterId)))
+            //!  Set the time in the meter to the computer's idea of the local standard time.
+            if (!SetMeterTime(serialPort, fullMeterId))
             {
-                qCritical("Unable to access INFORMATION_SCHEMA; assume data tables exist.");
-                qInfo("    Query was: %s", qUtf8Printable(query.lastQuery()));
-                qInfo("    Error was: %s", qUtf8Printable(query.lastError().text()));
+                qWarning("Unable to set meter time for meter %s.", qUtf8Printable(fullMeterId));
             }
-            else
-            {
-                qDebug("Successfully accessed INFORMATION_SCHEMA for query about existence of v.4 A data table.");
-                if (!query.next())
-                {
-                    // the query returned no results => table does not exist.  Create it.
-                    if (!query.exec(QString("CREATE TABLE `%1_A_RawMeterData` ("
-                                            "`idRawMeterData` int(11) NOT NULL AUTO_INCREMENT,"
-                                            "`ComputerTime` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT 'Time that record written to database.',"
-                                            "`MeterTime` datetime DEFAULT NULL COMMENT 'Meter time from response message.',"
-                                            "`MeterId` varchar(12) DEFAULT NULL COMMENT 'Meter ID (Serial number) from response.',"
-                                            "`MeterType` varchar(4) DEFAULT NULL,"
-                                            "`DataType` varchar(4) DEFAULT NULL COMMENT 'Either \"V3\", \"V4A\" or \"V4B\"',"
-                                            "`MeterData` binary(255) NOT NULL COMMENT 'Exact copy of entire response data from meter.',"
-                                            "PRIMARY KEY (`idRawMeterData`),"
-                                            "UNIQUE KEY `idRawMeterData_UNIQUE` (`idRawMeterData`)"
-                                            ") ENGINE=InnoDB AUTO_INCREMENT=8281 DEFAULT CHARSET=utf8").arg(fullMeterId)))
-                    {
-                        qCritical("Unable to create RawMeterData A table for %s meter.  Assume table already exists.", qUtf8Printable(fullMeterId));
-                        qInfo("    Query was: %s", qUtf8Printable(query.lastQuery()));
-                        qInfo("    Error was: %s", qUtf8Printable(query.lastError().text()));
-                    }
-                    else
-                    {
-                        qInfo("Successfully created Table %s_A_RawMeterData", qUtf8Printable(fullMeterId));
-                    }
-                }
-                qDebug("Table %s_A_RawMeterData exists.", qUtf8Printable(fullMeterId));
-            }
-            if (!query.exec(QString("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '%1_B_RawMeterData'").arg(fullMeterId)))
-            {
-                qCritical("Unable to access INFORMATION_SCHEMA; assume data tables exist.");
-                qInfo("    Query was: %s", qUtf8Printable(query.lastQuery()));
-                qInfo("    Error was: %s", qUtf8Printable(query.lastError().text()));
-            }
-            else
-            {
-                qDebug("Successfully accessed INFORMATION_SCHEMA for query about existence of .v4 B data table.");
-                if (!query.next())
-                {
-                    // the query returned no results => table does not exist.  Create it.
-                    if (!query.exec(QString("CREATE TABLE `%1_B_RawMeterData` ("
-                                            "`idRawMeterData` int(11) NOT NULL AUTO_INCREMENT,"
-                                            "`ComputerTime` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT 'Time that record written to database.',"
-                                            "`MeterTime` datetime DEFAULT NULL COMMENT 'Meter time from response message.',"
-                                            "`MeterId` varchar(12) DEFAULT NULL COMMENT 'Meter ID (Serial number) from response.',"
-                                            "`MeterType` varchar(4) DEFAULT NULL,"
-                                            "`DataType` varchar(4) DEFAULT NULL COMMENT 'Either \"V3\", \"V4A\" or \"V4B\"',"
-                                            "`MeterData` binary(255) NOT NULL COMMENT 'Exact copy of entire response data from meter.',"
-                                            "PRIMARY KEY (`idRawMeterData`),"
-                                            "UNIQUE KEY `idRawMeterData_UNIQUE` (`idRawMeterData`)"
-                                            ") ENGINE=InnoDB AUTO_INCREMENT=8281 DEFAULT CHARSET=utf8").arg(fullMeterId)))
-                    {
-                        qCritical("Unable to create RawMeterData B table for %s meter.  Assume table already exists.", qUtf8Printable(fullMeterId));
-                        qInfo("    Query was: %s", qUtf8Printable(query.lastQuery()));
-                        qInfo("    Error was: %s", qUtf8Printable(query.lastError().text()));
-                    }
-                    else
-                    {
-                        qInfo("Successfully created Table %s_B_RawMeterData", qUtf8Printable(fullMeterId));
-                    }
-                }
-                qDebug("Table %s_B_RawMeterData exists.", qUtf8Printable(fullMeterId));
-            }
+
+            // Create the tables if they don't exist.
+            VerifyDatabaseTable(query, fullMeterId, "_A");
+            VerifyDatabaseTable(query, fullMeterId, "_B");
         }
         else
         {
             // Is a v.3 meter.
+            // Don't try to set meter time for v.3 meter since I don't know how to do it.
             // Create the table if it doesn't exist.
-            if (!query.exec(QString("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '%1_RawMeterData'").arg(fullMeterId)))
-            {
-                qCritical("Unable to access INFORMATION_SCHEMA; assume data tables exist.");
-                qInfo("    Query was: %s", qUtf8Printable(query.lastQuery()));
-                qInfo("    Error was: %s", qUtf8Printable(query.lastError().text()));
-            }
-            else
-            {
-                qDebug("Successfully accessed INFORMATION_SCHEMA for query about existence of .v3 data table.");
-                if (!query.next())
-                {
-                    // the query returned no results => table does not exist.  Create it.
-                    if (!query.exec(QString("CREATE TABLE `%1_RawMeterData` ("
-                                            "`idRawMeterData` int(11) NOT NULL AUTO_INCREMENT,"
-                                            "`ComputerTime` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT 'Time that record written to database.',"
-                                            "`MeterTime` datetime DEFAULT NULL COMMENT 'Meter time from response message.',"
-                                            "`MeterId` varchar(12) DEFAULT NULL COMMENT 'Meter ID (Serial number) from response.',"
-                                            "`MeterType` varchar(4) DEFAULT NULL,"
-                                            "`DataType` varchar(4) DEFAULT NULL COMMENT 'Either \"V3\", \"V4A\" or \"V4B\"',"
-                                            "`MeterData` binary(255) NOT NULL COMMENT 'Exact copy of entire response data from meter.',"
-                                            "PRIMARY KEY (`idRawMeterData`),"
-                                            "UNIQUE KEY `idRawMeterData_UNIQUE` (`idRawMeterData`)"
-                                            ") ENGINE=InnoDB AUTO_INCREMENT=8281 DEFAULT CHARSET=utf8").arg(fullMeterId)))
-                    {
-                        qCritical("Unable to create v.3 RawMeterData table for %s meter.  Assume table already exists.", qUtf8Printable(fullMeterId));
-                        qInfo("    Query was: %s", qUtf8Printable(query.lastQuery()));
-                        qInfo("    Error was: %s", qUtf8Printable(query.lastError().text()));
-                    }
-                    else
-                    {
-                        qInfo("Successfully created Table %s_RawMeterData", qUtf8Printable(fullMeterId));
-                    }
-                }
-                qDebug("Table %s_RawMeterData exists.", qUtf8Printable(fullMeterId));
-            }
+            VerifyDatabaseTable(query, fullMeterId, "");
         }
     }
     return true;
@@ -1141,7 +1123,7 @@ int main(int argc, char *argv[])
         today = QDate::currentDate();       // Update "today" after all meters read.
         if ((interval > 0) && (repeatCount > 1))
         {
-            DumpDebugInfo();
+            DumpDebugInfo();    // dump debug info so we can monitor progress of program.
             /* interval*60000 is the number of millisec between reads.
              * Compute the number of millisec we're into this period,
              * subtract from the number of millisec in an interval
