@@ -113,6 +113,17 @@ SELECT rmd.ComputerTime AS Time
          rmd1.idRawMeterData = rmd.idRawMeterData -1        /* Join this record with previous as defined by id number. */
 ;
 
+SQL to extract records from the DebugInfo table starting from 2310 yesterday.
+SELECT Time
+, RIGHT(ArchiveTag,8) as TAG    /* Only show 8 characters of the ArchiveTag */
+, Severity
+, SUBSTRING_INDEX(SUBSTRING_INDEX(SUBSTRING_INDEX(FunctionName, '::', -1), '(', 1), ' ', -1) as Function /* Display just the function name. */
+, SourceLineNo as Line
+, LEFT(REPLACE(REPLACE(Message,'\r','\\r'),'\n','\\n'), 240)  /* Only show first 240 chars of message, replacing \r and \n with "\r" and "\n" */
+ FROM DebugInfo WHERE Time > TIMESTAMPADD(MINUTE, -50, DATE(NOW()))      /* 50 minutes before midnight today. */
+ /* AND ArchiveTag LIKE 'notset' */ /* To see only program starts. */
+;
+
 
 Example time set sequence from EKM Dash program:
 Send Request v4A
