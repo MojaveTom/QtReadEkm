@@ -888,8 +888,8 @@ int main(int argc, char *argv[])
      * Process command line options
      */
     QCommandLineParser parser;
-    parser.setApplicationDescription("\nReadHouseAndWater\n"
-                                     "     Program to read House Electrical power usage and Water usage and store in database.");
+    parser.setApplicationDescription("\nReadEKM\n"
+                                     "     Program to read EKM power meters and store in database.");
     parser.addHelpOption();
 
     parser.addPositionalArgument("meterId", "Meter serial numbers to read.", "[meter id] ...");
