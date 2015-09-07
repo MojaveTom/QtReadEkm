@@ -876,7 +876,7 @@ int main(int argc, char *argv[])
     // Silent till options processed.
     qInstallMessageHandler(saveMessageOutput);
     qInfo() << "Begin";
-    DetermineCommitTag(__FILE__);
+    DetermineCommitTag();
 
     /*
      * Local variable declarations
