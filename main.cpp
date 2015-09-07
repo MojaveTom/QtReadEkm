@@ -1,20 +1,20 @@
 /*!
-@file
+@file main.cpp
 @brief Main program to read EKM meters and save response in database.
 @author Thomas A. DeMay
 @date 2015
 @par    Copyright (C) 2015  Thomas A. DeMay
-@par
+
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     any later version.
-@par
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
-@par
+
     You should have received a copy of the GNU General Public License along
     with this program; if not, write to the Free Software Foundation, Inc.,
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -876,7 +876,7 @@ int main(int argc, char *argv[])
     // Silent till options processed.
     qInstallMessageHandler(saveMessageOutput);
     qInfo() << "Begin";
-    DetermineCommitTag(a.arguments().at(0), __FILE__);
+    DetermineCommitTag(__FILE__);
 
     /*
      * Local variable declarations
@@ -961,7 +961,7 @@ int main(int argc, char *argv[])
     if (!databaseConnString.isEmpty())
     {
         qDebug() << "Using database connection string for debug info: " << databaseConnString;
-        addConnectionFromString(databaseConnString, true);
+        addConnectionFromString(databaseConnString, true);  // Optional last arg flags to create debug connection.
     }
 
     interval = parser.value(intervalOption).toInt();
